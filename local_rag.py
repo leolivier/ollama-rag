@@ -7,7 +7,8 @@ from langchain_community.vectorstores.utils import filter_complex_metadata
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
-
+from pathlib import Path
+import os
 
 class ChatPDF:
     vector_store = None
@@ -27,14 +28,22 @@ class ChatPDF:
             Answer: [/INST]
             """
         )
+        # absolute path of ./data/chromadb.json
+        database_path = os.path.join(Path(__file__).resolve().parent, "data", "chromadb.json")
+        self.vector_store = Chroma(
+            "ollama-rag",
+            embedding_function=FastEmbedEmbeddings(),
+            persist_directory=database_path
+        )
 
     def ingest(self, pdf_file_path: str):
         docs = PyPDFLoader(file_path=pdf_file_path).load()
         chunks = self.text_splitter.split_documents(docs)
         chunks = filter_complex_metadata(chunks)
 
-        vector_store = Chroma.from_documents(documents=chunks, embedding=FastEmbedEmbeddings())
-        self.retriever = vector_store.as_retriever(
+        self.vector_store.add_documents(chunks)
+
+        self.retriever = self.vector_store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
                 "k": 3,
@@ -47,6 +56,7 @@ class ChatPDF:
                       | self.model
                       | StrOutputParser())
 
+
     def ask(self, query: str):
         if not self.chain:
             return "Please, add a PDF document first."
@@ -54,6 +64,5 @@ class ChatPDF:
         return self.chain.invoke(query)
 
     def clear(self):
-        self.vector_store = None
         self.retriever = None
         self.chain = None

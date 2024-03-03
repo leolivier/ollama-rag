@@ -31,4 +31,4 @@ To run it:
 
 # what's next
 - create a Docker image
-- allow saving and reloading of the vector database.
+- create a docker-compose file
