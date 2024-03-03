@@ -5,3 +5,4 @@ streamlit>=1.31.1
 streamlit_chat>=0.1.1
 pypdf>=4.0.2
 fastembed>=v0.2.2
+chromadb>=0.4.24
