@@ -9,6 +9,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 class ChatPDF:
     vector_store = None
@@ -16,7 +17,10 @@ class ChatPDF:
     chain = None
 
     def __init__(self):
-        self.model = ChatOllama(model="mistral:latest")
+        load_dotenv()
+        OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
+        OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral:latest')
+        self.model = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_URL)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
         self.prompt = PromptTemplate.from_template(
             """
