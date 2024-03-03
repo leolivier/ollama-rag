@@ -28,8 +28,8 @@ class ChatPDF:
             Answer: [/INST]
             """
         )
-        # absolute path of ./data/chromadb.json
-        database_path = os.path.join(Path(__file__).resolve().parent, "data", "chromadb.json")
+        # absolute path of ./chromadb_data
+        database_path = os.path.join(Path(__file__).resolve().parent, "chromadb_data")
         self.vector_store = Chroma(
             "ollama-rag",
             embedding_function=FastEmbedEmbeddings(),

@@ -1,2 +1,3 @@
 *.pyc
-chromadb.json/
+chromadb_data/
+__pycache__/
