@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_chat import message
 from local_rag import ChatPDF
 
-st.set_page_config(page_title="ChatPDF")
+st.set_page_config(page_title="Chat with your PDFs")
 
 
 def display_messages():
