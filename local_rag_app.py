@@ -25,7 +25,6 @@ def process_input():
 
 
 def read_and_ingest_files():
-    st.session_state["assistant"].clear()
     st.session_state["messages"] = []
     st.session_state["user_input"] = ""
 

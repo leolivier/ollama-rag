@@ -36,13 +36,6 @@ class ChatPDF:
             persist_directory=database_path
         )
 
-    def ingest(self, pdf_file_path: str):
-        docs = PyPDFLoader(file_path=pdf_file_path).load()
-        chunks = self.text_splitter.split_documents(docs)
-        chunks = filter_complex_metadata(chunks)
-
-        self.vector_store.add_documents(chunks)
-
         self.retriever = self.vector_store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
@@ -56,13 +49,15 @@ class ChatPDF:
                       | self.model
                       | StrOutputParser())
 
+    def ingest(self, pdf_file_path: str):
+        docs = PyPDFLoader(file_path=pdf_file_path).load()
+        chunks = self.text_splitter.split_documents(docs)
+        chunks = filter_complex_metadata(chunks)
+
+        self.vector_store.add_documents(chunks)
 
     def ask(self, query: str):
         if not self.chain:
             return "Please, add a PDF document first."
 
         return self.chain.invoke(query)
-
-    def clear(self):
-        self.retriever = None
-        self.chain = None
