@@ -6,10 +6,11 @@ from langchain_community.chat_models import ChatOllama
 from langchain_community.vectorstores.utils import filter_complex_metadata
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, PyPDFDirectoryLoader
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import logging
 
 class ChatPDF:
     vector_store = None
@@ -20,6 +21,7 @@ class ChatPDF:
         load_dotenv()
         OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
         OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral:latest')
+        logging.info(f'OLLAM URL and MODEL {OLLAMA_URL} {OLLAMA_MODEL}')
         self.model = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_URL)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
         self.prompt = PromptTemplate.from_template(
@@ -59,9 +61,22 @@ class ChatPDF:
         chunks = filter_complex_metadata(chunks)
 
         self.vector_store.add_documents(chunks)
+        return self
+
+    def ingest_directory(self, pdf_dir_path: str):
+        docs = PyPDFDirectoryLoader(path=pdf_dir_path).load()
+        chunks = self.text_splitter.split_documents(docs)
+        chunks = filter_complex_metadata(chunks)
+
+        self.vector_store.add_documents(chunks)
+        return self
 
     def ask(self, query: str):
         if not self.chain:
             return "Please, add a PDF document first."
 
         return self.chain.invoke(query)
+
+    def empty_database(self):
+        self.vector_store.delete_collection()
+        return self

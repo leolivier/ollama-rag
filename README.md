@@ -28,10 +28,24 @@ $ pip install -r requirements.txt
 ```
 
 ## Running the application
-To run it locally:
+
+### To run it locally with the WEB UI
 `streamlit run local_rag_app.py`
 
-To run it with Docker:
+### To run in batch mode
+`python batch_rag.py [-h] -d DIRECTORY [-q QUESTION] [-s]`
+
+This will run one question about a set of PDFs using an LLM
+
+Options are:
+  * -h, --help            show this help message and exit
+  * -d DIRECTORY, --directory DIRECTORY
+                        directory containing pdfs to be interrogated
+  * -q QUESTION, --question QUESTION
+                        question to be sent to the LLM about the documents
+  * -s, --separately      process each pdf separately. Use this option if you want to ask the same question to each file.
+
+### To run it with Docker
 - First, build the image:
 `docker build -t local_rag .`
 - Then copy .env.example to .env and fill in the values for the environment variables.
@@ -39,3 +53,4 @@ To run it with Docker:
 - Then run the image:
 `docker run -p 8501:8501 -d --name local_rag -v ./chromadb_data:/app/chromadb_data -v ./.env:/app/.env local_rag`
 The volumes will store the data in the host machine and the .env file will be used to configure the app.
+
