@@ -55,6 +55,8 @@ def page():
         accept_multiple_files=True,
     )
 
+    st.button("Empty database", on_click=lambda: st.session_state["assistant"].empty_database())
+
     st.session_state["ingestion_spinner"] = st.empty()
 
     display_messages()
