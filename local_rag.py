@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 import logging
+import sys
 
 class ChatPDF:
     vector_store = None
@@ -34,6 +35,9 @@ class ChatPDF:
             Answer: [/INST]
             """
         )
+        self.build_chain()
+
+    def build_chain(self):
         # absolute path of ./chromadb_data
         database_path = os.path.join(Path(__file__).resolve().parent, "chromadb_data")
         self.vector_store = Chroma(
@@ -54,8 +58,11 @@ class ChatPDF:
                       | self.prompt
                       | self.model
                       | StrOutputParser())
+        
+        return self
 
     def ingest(self, pdf_file_path: str):
+        logging.info(f'Ingesting file {pdf_file_path}')
         docs = PyPDFLoader(file_path=pdf_file_path).load()
         chunks = self.text_splitter.split_documents(docs)
         chunks = filter_complex_metadata(chunks)
@@ -64,6 +71,7 @@ class ChatPDF:
         return self
 
     def ingest_directory(self, pdf_dir_path: str):
+        logging.info(f'Ingesting directory {pdf_dir_path}')
         docs = PyPDFDirectoryLoader(path=pdf_dir_path).load()
         chunks = self.text_splitter.split_documents(docs)
         chunks = filter_complex_metadata(chunks)
@@ -71,12 +79,27 @@ class ChatPDF:
         self.vector_store.add_documents(chunks)
         return self
 
-    def ask(self, query: str):
+    def ask(self, query: str, format = "none"):
         if not self.chain:
             return "Please, add a PDF document first."
-
+        logging.info(f'Querying "{query}" with format {format}')
+        if format != "none":
+            query= self._set_format(query, format)
         return self.chain.invoke(query)
 
     def empty_database(self):
+        logging.info(f'Emptying database')
         self.vector_store.delete_collection()
-        return self
+        return self.build_chain()
+
+    def _set_format(self, question: str, format: str) -> str:
+        # add a sentence to the provided prompt so that it returns data formatted the right way 
+        logging.info(f'Setting format {format}')
+        if format == "none":
+            return question
+        elif format == "json":
+            return f"{question} [INST] Output Format: json [/INST]"
+        elif format == "csv":
+            return f"{question} [INST] Output Format: csv with each field protected by double quotes [/INST]"
+        else:
+            sys.exit(f"Format {format} is not supported. Please use json or csv")
