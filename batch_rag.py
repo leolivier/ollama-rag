@@ -2,8 +2,11 @@ import os
 from local_rag import ChatPDF
 import sys
 from argparse import ArgumentParser
+from pathlib import Path
+import logging
+import json
 
-def main():
+def get_args():
 		parser = ArgumentParser("python batch_rag.py", description="Runs one question about a set of PDFs using an LLM")
 		parser.add_argument("-d", "--directory", dest="directory", 
 												help="directory containing pdfs to be interrogated", 
@@ -12,16 +15,38 @@ def main():
 												help="question to be sent to the LLM about the documents")
 		parser.add_argument("-s", "--separately", dest="separately", action="store_true",
 												help="process each pdf separately. Use this option if you want to ask the same question to each file.")
-		# parser.add_argument("-h", "--help", dest="help", action="store_true",
-		# 										help="print this help")
+		parser.add_argument("-o", "--output", dest="output",	
+											help="output file to be written with the results")
+		parser.add_argument("-v", "--verbose", dest="verbose", action="store_true",
+											help="increase output verbosity")
+		parser.add_argument("-c", "--config", dest="config",
+												help="path to config file")
+		parser.add_argument("-l", "--log", dest="log",
+											help="path to log file")
+		parser.add_argument("-f", "--format", dest="format", default="none", choices=["json", "csv", "none"],
+											help="format of the output file. Currently supported: json or csv or none if no particular format is desired (default).")
+		return parser.parse_args()
 
-		args = parser.parse_args()
+def main():
+
+		# parse args
+		args = get_args()
+
+		logging.basicConfig(encoding='utf-8', level=logging.DEBUG if args.verbose else logging.INFO, filename=args.log if args.log else None)
 
 		# check directory
 		if not os.path.exists(args.directory):
 			sys.exit(f"Directory {args.directory} does not exist")
 		if not os.path.isdir(args.directory):
 			sys.exit(f"Path {args.directory} is not a directory")
+
+		# check output
+		if args.output:
+			if os.path.exists(args.output):
+				sys.exit(f"Output file {args.output} already exists")
+			output_file = open(args.output, "w", newline='\n', encoding='utf-8')
+		else:
+			output_file = sys.stdout
 
 		# check question
 		if not args.question:
@@ -35,19 +60,32 @@ def main():
 		chatPdf = ChatPDF()
 		if args.separately:
 			# process files one by one
-			result = ""
 			for file in os.listdir(args.directory):
 				# process only pdf files
+				dir = Path(args.directory).resolve()
 				if file.endswith(".pdf"):
-					result += chatPdf.ingest(file).ask(args.question) + '\n'
+					absolute_file = os.path.join(dir, file)
+					result = chatPdf.ingest(absolute_file).ask(args.question, format=args.format)
 					chatPdf.empty_database()
+					if args.format == "json":
+						result = json.loads(result)
+						result["file"] = file
+						out = json.dumps(result)
+					elif args.format == "csv":
+						out = f'"{file}",{result}'
+					else:
+						out = f"result for file {file}: {result}"
+					logging.info(out)
+					output_file.write(out)
 		else:	
 			# process all files in directory
-			result = chatPdf.ingest_directory(args.directory).ask(args.question)
+			result = chatPdf.ingest_directory(args.directory).ask(args.question, format=args.format)
+			if args.format == "json":
+				output_file.write (json.dumps(result))
+			else:
+				output_file.write (result)
 
 		chatPdf.empty_database()
-
-		print(result)
 
 
 if __name__ == "__main__":
