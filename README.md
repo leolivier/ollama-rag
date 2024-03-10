@@ -33,17 +33,25 @@ $ pip install -r requirements.txt
 `streamlit run local_rag_app.py`
 
 ### To run in batch mode
-`python batch_rag.py [-h] -d DIRECTORY [-q QUESTION] [-s]`
+`python batch_rag.py [-h] -d DIRECTORY [-q QUESTION] [-s] [-o OUTPUT] [-v] [-c CONFIG] [-l LOG] [-f {json,csv,none}]`
 
-This will run one question about a set of PDFs using an LLM
+Runs one question about a set of PDFs using an LLM
 
-Options are:
+options:
   * -h, --help            show this help message and exit
   * -d DIRECTORY, --directory DIRECTORY
                         directory containing pdfs to be interrogated
   * -q QUESTION, --question QUESTION
                         question to be sent to the LLM about the documents
   * -s, --separately      process each pdf separately. Use this option if you want to ask the same question to each file.
+  * -o OUTPUT, --output OUTPUT
+                        output file to be written with the results
+  * -v, --verbose         increase output verbosity
+  * -c CONFIG, --config CONFIG
+                        path to config file (not implemented yet)
+  * -l LOG, --log LOG     path to log file
+  * -f {json,csv,none}, --format {json,csv,none}
+                        format of the output file. Currently supported: json or csv or none if no particular format is desired (default).
 
 ### To run it with Docker
 - First, build the image:
