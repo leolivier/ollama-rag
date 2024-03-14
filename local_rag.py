@@ -12,11 +12,14 @@ import os
 from dotenv import load_dotenv
 import logging
 import sys
+import re
 
 class ChatPDF:
     vector_store = None
     retriever = None
     chain = None
+    JSON_CLEANER = re.compile(r'^[^{]*({[\s\S]*})[^}]*$')
+    CSV_CLEANER = re.compile(r'^\s*\[?([\s\S]*)\]?\s*$')
 
     def __init__(self):
         load_dotenv()
@@ -29,7 +32,7 @@ class ChatPDF:
             """
             <s> [INST] You are an assistant for question-answering tasks. Use the following pieces of retrieved context 
             to answer the question. If you don't know the answer, just say that you don't know. Use three sentences
-             maximum and keep the answer concise. [/INST] </s> 
+             maximum and keep the answer concise. And answer according to the language of the user's question. [/INST] </s> 
             [INST] Question: {question} 
             Context: {context} 
             Answer: [/INST]
@@ -85,12 +88,20 @@ class ChatPDF:
         logging.info(f'Querying "{query}" with format {format}')
         if format != "none":
             query= self._set_format(query, format)
-        return self.chain.invoke(query)
+        return self.clean_output(self.chain.invoke(query), format)
 
     def empty_database(self):
         logging.info(f'Emptying database')
         self.vector_store.delete_collection()
         return self.build_chain()
+
+    def clean_output(self, output, format):
+        if format == 'json':
+            return re.sub(self.JSON_CLEANER, "\\1", output)
+        elif format == 'csv':
+            return re.sub(self.CSV_CLEANER, "\\1", output)
+        else:
+            return output
 
     def _set_format(self, question: str, format: str) -> str:
         # add a sentence to the provided prompt so that it returns data formatted the right way 
