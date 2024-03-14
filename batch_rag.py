@@ -50,16 +50,21 @@ def main():
 
 		# check question
 		if not args.question:
-			sys.stdout.write("No question was provided. Please provide a one line question:")
+			sys.stdout.write("No question was provided. Please provide a question (^D to end):\n")
 			sys.stdout.flush()
-			args.question = sys.stdin.readline()
-		if not args.question:
+			args.question = ''
+			for line in sys.stdin:
+				args.question += line
+		if not args.question or args.question == '':
 				sys.exit("No question was provided. Exiting.")
-
+		else:
+			logging.info(f"Question is: {args.question}")
 		# manage chat
 		chatPdf = ChatPDF()
 		if args.separately:
 			# process files one by one
+			if args.format == "json":
+				output_file.write("[\n")
 			for file in os.listdir(args.directory):
 				# process only pdf files
 				dir = Path(args.directory).resolve()
@@ -68,15 +73,22 @@ def main():
 					result = chatPdf.ingest(absolute_file).ask(args.question, format=args.format)
 					chatPdf.empty_database()
 					if args.format == "json":
-						result = json.loads(result)
+						try:
+							result = json.loads(result)
+						except json.decoder.JSONDecodeError:
+							logging.info(f"JSON error occurred while processing file {file}:\n{result}\nFile skipped...")
+							continue
 						result["file"] = file
-						out = json.dumps(result)
+						out = json.dumps(result) + ','
 					elif args.format == "csv":
 						out = f'"{file}",{result}'
 					else:
 						out = f"result for file {file}: {result}"
 					logging.info(out)
-					output_file.write(out)
+					output_file.write(f"{out}\n")
+					output_file.flush()
+			if args.format == "json":
+				output_file.write("]\n")
 		else:	
 			# process all files in directory
 			result = chatPdf.ingest_directory(args.directory).ask(args.question, format=args.format)
