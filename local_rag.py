@@ -20,16 +20,9 @@ class ChatPDF:
     chain = None
     JSON_CLEANER = re.compile(r'^[^{]*({[\s\S]*})[^}]*$')
     CSV_CLEANER = re.compile(r'^\s*\[?([\s\S]*)\]?\s*$')
-
-    def __init__(self):
-        load_dotenv()
-        OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-        OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral:latest')
-        logging.info(f'OLLAM URL and MODEL {OLLAMA_URL} {OLLAMA_MODEL}')
-        self.model = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_URL)
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
-        self.prompt = PromptTemplate.from_template(
-            """
+    DEFAULT_URL = 'http://localhost:11434'
+    DEFAULT_MODEL = 'mistral:latest'
+    DEFAULT_PROMPT = """
             <s> [INST] You are an assistant for question-answering tasks. Use the following pieces of retrieved context 
             to answer the question. If you don't know the answer, just say that you don't know. Use three sentences
              maximum and keep the answer concise. And answer according to the language of the user's question. [/INST] </s> 
@@ -37,7 +30,16 @@ class ChatPDF:
             Context: {context} 
             Answer: [/INST]
             """
-        )
+
+    def __init__(self):
+        load_dotenv()
+        OLLAMA_URL = os.getenv('OLLAMA_URL', self.DEFAULT_URL)
+        OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', self.DEFAULT_MODEL)
+        LLM_PROMPT = os.getenv('LLM_PROMPT', self.DEFAULT_PROMPT)
+        logging.info(f'OLLAM URL: {OLLAMA_URL} MODEL: {OLLAMA_MODEL} \nLLM_PROMPT: {LLM_PROMPT}')
+        self.model = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_URL)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
+        self.prompt = PromptTemplate.from_template(LLM_PROMPT)
         self.build_chain()
 
     def build_chain(self):
@@ -85,17 +87,19 @@ class ChatPDF:
     def ask(self, query: str, format = "none"):
         if not self.chain:
             return "Please, add a PDF document first."
-        logging.info(f'Querying "{query}" with format {format}')
+        logging.info("Running query")
+        logging.debug(f'> "{query}" with format {format}')
         if format != "none":
             query= self._set_format(query, format)
         return self.clean_output(self.chain.invoke(query), format)
 
     def empty_database(self):
-        logging.info(f'Emptying database')
+        logging.debug(f'Emptying database')
         self.vector_store.delete_collection()
         return self.build_chain()
 
     def clean_output(self, output, format):
+        logging.debug(f'Cleaning output {output}, with format {format}')
         if format == 'json':
             return re.sub(self.JSON_CLEANER, "\\1", output)
         elif format == 'csv':
@@ -105,7 +109,7 @@ class ChatPDF:
 
     def _set_format(self, question: str, format: str) -> str:
         # add a sentence to the provided prompt so that it returns data formatted the right way 
-        logging.info(f'Setting format {format}')
+        logging.debug(f'Setting format {format}')
         if format == "none":
             return question
         elif format == "json":
